@@ -8,7 +8,7 @@ This saves a roundtrip, the overhead of transmitting the whole transaction, as w
 
 Clone into IRI's ixi directory:
 
-    git clone https://github.com/nullpilot/oyster.ixi.git Oyster
+    git clone https://github.com/oysterprotocol/oyster.ixi/ Oyster
 
 ## Testing
 
