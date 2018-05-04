@@ -1,8 +1,10 @@
-# Oyster.iri
+# Oyster.ixi
 
-Provides an API Method `Oyster.findSignatures` that returns the signatures of the first transaction associated with a given addresses.
+Provides an API Method `Oyster.findSignatures` that returns the signatures of the first* transaction associated with each given address.
 
 This saves a roundtrip, the overhead of transmitting the whole transaction, as well as skipping any additional transactions `findTransactions` would return.
+
+* - this needs some work
 
 ## Installation
 
