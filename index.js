@@ -1,6 +1,7 @@
 var iri = com.iota.iri;
 var Callable = iri.service.CallableRequest;
 var Response = iri.service.dto.IXIResponse;
+var BinaryResponse = iri.service.dto.BinaryResponse;
 var Error = iri.service.dto.ErrorResponse;
 var Transaction = iri.controllers.TransactionViewModel;
 var Address = iri.controllers.AddressViewModel;
@@ -11,8 +12,26 @@ var Byte = Java.type('java.lang.Byte');
 var LinkedList = Java.type('java.util.LinkedList');
 var MessageDigest = Java.type('java.security.MessageDigest');
 var Str = Java.type('java.lang.String');
+var ByteArrayOutputStream = Java.type('java.io.ByteArrayOutputStream');
+var ByteArray = Java.type('byte[]');
 
 print("Oyster extension started... ");
+
+function fromTrytes(trytes) {
+  if (trytes == null || (trytes.length % 2) != 0) {
+    return null
+  }
+
+  var bytes = new ByteArray(trytes.length / 2)
+
+  for (var i = 0, offset = 0; i < trytes.length; i += 2) {
+    var low = Converter.TRYTE_ALPHABET.indexOf(trytes[i]);
+    var high = Converter.TRYTE_ALPHABET.indexOf(trytes[i + 1]);
+    bytes[offset++] = low + high * 27;
+  }
+
+  return bytes;
+}
 
 function getHash(message, algorithm) {
   try {
@@ -38,10 +57,46 @@ function generateHashList(hash, count) {
     var obfuscatedHash = getHash(hash, 'SHA-384');
     hash = getHash(hash, 'SHA-256');
     hashList.add(obfuscatedHash)
-    print(obfuscatedHash)
   }
 
   return hashList
+}
+
+function trimSignature(signature) {
+  var i = signature.length() - 1;
+
+  while(i >= 0 && signature.charAt(i) == '9') {
+    i--
+  }
+
+  print(i, signature.charAt(i))
+
+  // keep one more tryte if length (i+1) is uneven
+  if(i % 2 == 0) {
+    i++;
+  }
+
+  return signature.substring(0, i + 1)
+}
+
+function binarySignatures(signatures) {
+  var byteStream = new ByteArrayOutputStream();
+
+  for (var i in signatures) {
+    var signature = signatures[i];
+
+    if(signature != null) {
+      var trytes = trimSignature(signature);
+      var bytes = fromTrytes(trytes);
+
+      // 2 bytes length + payload
+      byteStream.write((bytes.length >> 8) & 0xFF);
+      byteStream.write(bytes.length & 0xFF);
+      byteStream.write(bytes);
+    }
+  }
+
+  return byteStream.toByteArray();
 }
 
 function generateSignatures(hash, count) {
@@ -59,6 +114,7 @@ function findGeneratedSignatures(request) {
   try {
     var hash = request.get('hash')
     var count = request.get('count')
+    var binary = request.get('binary')
 
     if (hash === null || count === null) {
       print('Request incomplete')
@@ -67,7 +123,12 @@ function findGeneratedSignatures(request) {
 
     var signatures = generateSignatures(hash, count)
 
-    return Response.create({signatures: signatures});
+    if(binary) {
+      var signatureBuffer = binarySignatures(signatures)
+      return BinaryResponse.create(signatureBuffer)
+    } else {
+      return Response.create({signatures: signatures});
+    }
   } catch(e) {
     print(e)
     e.printStackTrace()
