@@ -12,25 +12,24 @@ var Byte = Java.type('java.lang.Byte');
 var LinkedList = Java.type('java.util.LinkedList');
 var MessageDigest = Java.type('java.security.MessageDigest');
 var Str = Java.type('java.lang.String');
-var ByteArrayOutputStream = Java.type('java.io.ByteArrayOutputStream');
+var ByteBufferArray = Java.type('java.nio.ByteBuffer[]')
+var ByteBuffer = Java.type('java.nio.ByteBuffer')
 var ByteArray = Java.type('byte[]');
 
 print("Oyster extension started... ");
 
-function fromTrytes(trytes) {
+function fromTrytes(trytes, bytes, offset) {
   if (trytes == null || (trytes.length % 2) != 0) {
     return null
   }
 
-  var bytes = new ByteArray(trytes.length / 2)
-
-  for (var i = 0, offset = 0; i < trytes.length; i += 2) {
+  for (var i = 0; i < trytes.length; i += 2) {
     var low = Converter.TRYTE_ALPHABET.indexOf(trytes[i]);
     var high = Converter.TRYTE_ALPHABET.indexOf(trytes[i + 1]);
     bytes[offset++] = low + high * 27;
   }
 
-  return bytes;
+  return true;
 }
 
 function getHash(message, algorithm) {
@@ -78,23 +77,27 @@ function trimSignature(signature) {
 }
 
 function binarySignatures(signatures) {
-  var byteStream = new ByteArrayOutputStream();
+  var byteBuffers = new ByteBufferArray(signatures.length)
+  var size = 0
 
-  for (var i in signatures) {
-    var signature = signatures[i];
+  for (var i = 0; i < signatures.length; i++) {
+    var signature = signatures[i]
 
     if(signature != null) {
-      var trytes = trimSignature(signature);
-      var bytes = fromTrytes(trytes);
+      var trytes = trimSignature(signature)
+      var length = trytes.length / 2
+      var bytes = new ByteArray(2 + length)
+      fromTrytes(trytes, bytes, 2)
 
-      // 2 bytes length + payload
-      byteStream.write((bytes.length >> 8) & 0xFF);
-      byteStream.write(bytes.length & 0xFF);
-      byteStream.write(bytes);
+      bytes[0] = (length >> 8) & 0xFF
+      bytes[1] = length & 0xFF
+      size += bytes.length
+
+      byteBuffers[i] = ByteBuffer.wrap(bytes)
     }
   }
 
-  return byteStream.toByteArray();
+  return BinaryResponse.create(byteBuffers, size)
 }
 
 function generateSignatures(hash, count) {
@@ -122,8 +125,8 @@ function findGeneratedSignatures(request) {
     var signatures = generateSignatures(hash, count)
 
     if(binary) {
-      var signatureBuffer = binarySignatures(signatures)
-      return BinaryResponse.create(signatureBuffer)
+      var signatureBytesResponse = binarySignatures(signatures);
+      return signatureBytesResponse;
     } else {
       return Response.create({signatures: signatures});
     }
