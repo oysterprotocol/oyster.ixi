@@ -69,8 +69,6 @@ function trimSignature(signature) {
     i--
   }
 
-  print(i, signature.charAt(i))
-
   // keep one more tryte if length (i+1) is uneven
   if(i % 2 == 0) {
     i++;
