@@ -16,6 +16,8 @@ var ByteBufferArray = Java.type('java.nio.ByteBuffer[]')
 var ByteBuffer = Java.type('java.nio.ByteBuffer')
 var ByteArray = Java.type('byte[]');
 
+var STOPPER_TRYTE = 'A'
+
 print("Oyster extension started... ");
 
 function fromTrytes(trytes, bytes, offset) {
@@ -62,18 +64,7 @@ function generateHashList(hash, count) {
 }
 
 function trimSignature(signature) {
-  var i = signature.length() - 1;
-
-  while(i >= 0 && signature.charAt(i) == '9') {
-    i--
-  }
-
-  // keep one more tryte if length (i+1) is uneven
-  if(i % 2 == 0) {
-    i++;
-  }
-
-  return signature.substring(0, i + 1)
+  return signature.substring(0, signature.lastIndexOf(STOPPER_TRYTE))
 }
 
 function binarySignatures(signatures) {
