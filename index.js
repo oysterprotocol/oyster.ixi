@@ -1,7 +1,6 @@
 var iri = com.iota.iri;
 var Callable = iri.service.CallableRequest;
 var Response = iri.service.dto.IXIResponse;
-var BinaryResponse = iri.service.dto.BinaryResponse;
 var Error = iri.service.dto.ErrorResponse;
 var Transaction = iri.controllers.TransactionViewModel;
 var Address = iri.controllers.AddressViewModel;
@@ -10,8 +9,6 @@ var Hash = iri.model.Hash;
 
 var Byte = Java.type('java.lang.Byte');
 var ByteArray = Java.type('byte[]');
-var ByteBuffer = Java.type('java.nio.ByteBuffer')
-var ByteBufferArray = Java.type('java.nio.ByteBuffer[]')
 var CharArray = Java.type('char[]');
 var Integer = Java.type('java.lang.Integer');
 var LinkedList = Java.type('java.util.LinkedList');
@@ -106,30 +103,6 @@ function trimSignature(signature) {
   return signature.substring(0, signature.lastIndexOf(STOPPER_TRYTE))
 }
 
-function binarySignatures(signatures) {
-  var byteBuffers = new ByteBufferArray(signatures.length)
-  var size = 0
-
-  for (var i = 0; i < signatures.length; i++) {
-    var signature = signatures[i]
-
-    if(signature != null) {
-      var trytes = trimSignature(signature)
-      var length = trytes.length / 2
-      var bytes = new ByteArray(2 + length)
-      fromTrytes(trytes, bytes, 2)
-
-      bytes[0] = (length >> 8) & 0xFF
-      bytes[1] = length & 0xFF
-      size += bytes.length
-
-      byteBuffers[i] = ByteBuffer.wrap(bytes)
-    }
-  }
-
-  return BinaryResponse.create(byteBuffers, size)
-}
-
 function generateSignatures(hash, count) {
   var rawHashes = generateHashList(hash, count)
 
@@ -145,7 +118,6 @@ function findGeneratedSignatures(request) {
   try {
     var hash = request.get('hash')
     var count = request.get('count')
-    var binary = request.get('binary')
 
     if (hash === null || count === null) {
       print('Request incomplete')
@@ -154,12 +126,7 @@ function findGeneratedSignatures(request) {
 
     var signatures = generateSignatures(hash, count)
 
-    if(binary) {
-      var signatureBytesResponse = binarySignatures(signatures);
-      return signatureBytesResponse;
-    } else {
-      return Response.create({signatures: signatures});
-    }
+    return Response.create({signatures: signatures});
   } catch(e) {
     print(e)
     e.printStackTrace()
