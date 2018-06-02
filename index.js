@@ -8,23 +8,78 @@ var Converter = iri.utils.Converter;
 var Hash = iri.model.Hash;
 
 var Byte = Java.type('java.lang.Byte');
+var ByteArray = Java.type('byte[]');
+var CharArray = Java.type('char[]');
+var Integer = Java.type('java.lang.Integer');
 var LinkedList = Java.type('java.util.LinkedList');
 var MessageDigest = Java.type('java.security.MessageDigest');
 var Str = Java.type('java.lang.String');
+var StringBuilder = Java.type('java.lang.StringBuilder');
+
+var STOPPER_TRYTE = 'A'
 
 print("Oyster extension started... ");
 
-function getHash(message, algorithm) {
+function hexToBytes(hexString) {
+  var b = new ByteArray(hexString.length / 2);
+
+  for (var i = 0; i < b.length; i++) {
+    var index = i * 2;
+    var v = Integer.parseInt(hexString.substring(index, index + 2), 16);
+    b[i] = v;
+  }
+
+  return b;
+}
+
+function bytesToHex(bytes) {
+  var hexChars = new CharArray(bytes.length * 2);
+
+  for (var j = 0; j < bytes.length; j++ ) {
+      var v = bytes[j] & 0xFF;
+      hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+      hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+  }
+  return new Str(hexChars);
+}
+
+function toTrytes(bytes) {
+  var sb = new StringBuilder(80);
+
+  for (var i = 0; i < bytes.length; i++) {
+      var v = bytes[i] & 0xFF;
+      var firstValue = v % 27;
+      var secondValue = (v - firstValue) / 27;
+      sb.append(Converter.TRYTE_ALPHABET.charAt(firstValue));
+      sb.append(Converter.TRYTE_ALPHABET.charAt(secondValue));
+
+      if(sb.length() >= 81) {
+        break;
+      }
+  }
+  return sb.toString();
+}
+
+function fromTrytes(trytes, bytes, offset) {
+  if (trytes == null || (trytes.length % 2) != 0) {
+    return null
+  }
+
+  for (var i = 0; i < trytes.length; i += 2) {
+    var low = Converter.TRYTE_ALPHABET.indexOf(trytes[i]);
+    var high = Converter.TRYTE_ALPHABET.indexOf(trytes[i + 1]);
+    bytes[offset++] = low + high * 27;
+  }
+
+  return true;
+}
+
+function getHash(bytes, algorithm) {
   try {
-    var buffer = message.getBytes();
     var md = MessageDigest.getInstance(algorithm);
-    md.update(buffer);
+    md.update(bytes);
     var digest = md.digest();
-    var hex = "";
-    for(var i = 0 ; i < digest.length ; i++) {
-      hex = hex + Str.format("%02x", Byte.parseByte(digest[i]));
-    }
-    return hex;
+    return digest;
   } catch(e) {
     e.printStackTrace();
   }
@@ -33,15 +88,19 @@ function getHash(message, algorithm) {
 
 function generateHashList(hash, count) {
   var hashList = new LinkedList()
+  var bytes = hexToBytes(hash)
 
   for(var i = 0 ; i < count; i++) {
-    var obfuscatedHash = getHash(hash, 'SHA-384');
-    hash = getHash(hash, 'SHA-256');
-    hashList.add(obfuscatedHash)
-    print(obfuscatedHash)
+    var obfuscatedHash = getHash(bytes, 'SHA-384');
+    bytes = getHash(bytes, 'SHA-256');
+    hashList.add(obfuscatedHash);
   }
 
   return hashList
+}
+
+function trimSignature(signature) {
+  return signature.substring(0, signature.lastIndexOf(STOPPER_TRYTE))
 }
 
 function generateSignatures(hash, count) {
@@ -79,7 +138,7 @@ function findGeneratedSignatures(request) {
 function getSignature(address) {
   return Address.load(IOTA.tangle, new Hash(address)).getHashes().stream()
       .map(function (h) { return Transaction.fromHash(IOTA.tangle, h) })
-      .map(function (tx) { return Converter.trytes(tx.getSignature())})
+      .map(function (tx) { return toTrytes(tx.getSignature())})
       .findFirst().orElse(null);
 }
 

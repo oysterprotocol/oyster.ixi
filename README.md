@@ -6,7 +6,7 @@ This saves a roundtrip, the overhead of transmitting the whole transaction, as w
 
 Additionally provides a more recent method `Oyster.findGeneratedSignatures`. This approach moves part of the datamap generation from the client to the server, easing the load on the clients upstream during download. Suggestions for a better method name welcome.
 
-* - this needs some work
+\* \- this needs some work
 
 ## Installation
 
