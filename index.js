@@ -138,7 +138,7 @@ function findGeneratedSignatures(request) {
 function getSignature(address) {
   return Address.load(IOTA.tangle, new Hash(address)).getHashes().stream()
       .map(function (h) { return Transaction.fromHash(IOTA.tangle, h) })
-      .map(function (tx) { return Converter.trytes(tx.getSignature())})
+      .map(function (tx) { return toTrytes(tx.getSignature())})
       .findFirst().orElse(null);
 }
 
