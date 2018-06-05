@@ -107,7 +107,7 @@ function generateSignatures(hash, count) {
   var rawHashes = generateHashList(hash, count)
 
   var signatures = rawHashes.stream()
-        .map(function (h) { return Converter.asciiToTrytes(h).substring(0, 81) })
+        .map(function (h) { return toTrytes(h).substring(0, 81) })
         .map(getSignature)
         .toArray()
 
@@ -138,7 +138,7 @@ function findGeneratedSignatures(request) {
 function getSignature(address) {
   return Address.load(IOTA.tangle, new Hash(address)).getHashes().stream()
       .map(function (h) { return Transaction.fromHash(IOTA.tangle, h) })
-      .map(function (tx) { return toTrytes(tx.getSignature())})
+      .map(function (tx) { return Converter.trytes(tx.getSignature())})
       .findFirst().orElse(null);
 }
 
